@@ -101,15 +101,21 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Handle thumbnails safely
-    let smallThumbnail = "https://img.youtube.com/vi/" + extractedId + "/default.jpg";
-    let bigThumbnail = "https://img.youtube.com/vi/" + extractedId + "/maxresdefault.jpg";
+    // Handle thumbnails safely with fallbacks
+    let smallThumbnail = `https://img.youtube.com/vi/${extractedId}/default.jpg`;
+    let bigThumbnail = `https://img.youtube.com/vi/${extractedId}/maxresdefault.jpg`;
     
-    if (res.thumbnail && res.thumbnail.thumbnails && Array.isArray(res.thumbnail.thumbnails)) {
-      const thumbnails = res.thumbnail.thumbnails;
-      thumbnails.sort((a: { width: number }, b: { width: number }) => b.width - a.width);
-      smallThumbnail = thumbnails.length > 1 ? thumbnails[thumbnails.length - 2]?.url || smallThumbnail : thumbnails[0]?.url || smallThumbnail;
-      bigThumbnail = thumbnails[thumbnails.length - 1]?.url || bigThumbnail;
+    // Try to get thumbnails from API response if available
+    if (res && res.thumbnail && res.thumbnail.thumbnails && Array.isArray(res.thumbnail.thumbnails)) {
+      try {
+        const thumbnails = res.thumbnail.thumbnails;
+        thumbnails.sort((a: { width: number }, b: { width: number }) => b.width - a.width);
+        smallThumbnail = thumbnails.length > 1 ? thumbnails[thumbnails.length - 2]?.url || smallThumbnail : thumbnails[0]?.url || smallThumbnail;
+        bigThumbnail = thumbnails[thumbnails.length - 1]?.url || bigThumbnail;
+      } catch (thumbError) {
+        console.warn("Error processing thumbnails, using defaults:", thumbError);
+        // Keep the default thumbnail URLs
+      }
     }
 
     try {
@@ -119,7 +125,7 @@ export async function POST(req: NextRequest) {
           url: cleanUrl,
           extractedId,
           type: "youtube",
-          title: res.title ?? "Unknown Title",
+          title: videoTitle,
           smallimg: smallThumbnail,
           bigimg: bigThumbnail,
         },
