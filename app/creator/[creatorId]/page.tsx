@@ -1,10 +1,11 @@
 import DashboardClient from "@/app/dashboard/DashboardClient";
 
-export default async function CreatorPage({ params }: { params: { creatorId: string } }) {
-  console.log("params:", params);
+export default async function CreatorPage({ params }: { params: Promise<{ creatorId: string }> }) {
+  const { creatorId } = await params;
+  console.log("params:", { creatorId });
   return (
     <div>
-      <DashboardClient creatorId={params.creatorId} />
+      <DashboardClient creatorId={creatorId} />
     </div>
   );
 }
