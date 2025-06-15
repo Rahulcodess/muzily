@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-//@ts-ignore
+//@ts-expect-error
 import youtubesearchapi from "youtube-search-api";
 import { prismaclient } from "@/lib/db"; 
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 const yt_regex =
   /^(?:(?:https?:)?\/\/)?(?:www\.)?(?:m\.)?(?:youtu(?:be)?\.com\/(?:v\/|embed\/|watch(?:\/|\?v=))|youtu\.be\/)((?:\w|-){11})(?:\S+)?$/;
@@ -79,7 +78,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Get current user session
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
     const currentUserId = session?.user?.id;
 
     const streams = await prismaclient.stream.findMany({

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { prismaclient } from "@/lib/db";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 // Zod Schema for Validation
 const upvoteSchema = z.object({
@@ -12,7 +11,7 @@ const upvoteSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
 
     if (!session?.user?.email) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });

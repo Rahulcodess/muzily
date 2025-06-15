@@ -1,9 +1,8 @@
 import DashboardClient from './DashboardClient';
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 export default async function DashboardPage() {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   const creatorId = session?.user?.id;
 
   if (!creatorId) {
