@@ -3,6 +3,7 @@ import { z } from "zod";
 import youtubesearchapi from "youtube-search-api";
 import { prismaclient } from "@/lib/db"; 
 import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 const yt_regex =
   /^(?:(?:https?:)?\/\/)?(?:www\.)?(?:m\.)?(?:youtu(?:be)?\.com\/(?:v\/|embed\/|watch(?:\/|\?v=))|youtu\.be\/)((?:\w|-){11})(?:\S+)?$/;
@@ -77,7 +78,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Get current user session
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     const currentUserId = session?.user?.id;
 
     const streams = await prismaclient.stream.findMany({
