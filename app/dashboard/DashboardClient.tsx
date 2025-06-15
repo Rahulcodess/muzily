@@ -133,19 +133,32 @@ export default function Dashboard({ creatorId }: DashboardProps) {
 
     console.log("🟡 Voting:", { streamId: id, type });
 
-    setQueue((prevQueue) =>
-      prevQueue.map((song) =>
-        song.id === id
-          ? {
-              ...song,
-              upvotes: type === "up" ? song.upvotes + 1 : song.upvotes,
-              downvotes: type === "down" ? song.downvotes + 1 : song.downvotes,
-            }
-          : song
-      )
-    );
-
+    // Optimistic update - immediate UI feedback
+    const previousVote = userVotes[id];
     setUserVotes((prevVotes) => ({ ...prevVotes, [id]: type }));
+    
+    setQueue((prevQueue) =>
+      prevQueue.map((song) => {
+        if (song.id !== id) return song;
+        
+        let newUpvotes = song.upvotes;
+        let newDownvotes = song.downvotes;
+        
+        // Remove previous vote if exists
+        if (previousVote === "up") newUpvotes--;
+        if (previousVote === "down") newDownvotes--;
+        
+        // Add new vote
+        if (type === "up") newUpvotes++;
+        if (type === "down") newDownvotes++;
+        
+        return {
+          ...song,
+          upvotes: Math.max(0, newUpvotes),
+          downvotes: Math.max(0, newDownvotes),
+        };
+      })
+    );
 
     try {
       const res = await fetch(`/api/stream/upvotes`, {
@@ -155,14 +168,48 @@ export default function Dashboard({ creatorId }: DashboardProps) {
       });
 
       const result = await res.json();
-      console.log("Upvote API response:", result);
 
       if (!res.ok) throw new Error(`Vote API failed: ${res.status}, ${JSON.stringify(result)}`);
 
+      // Update with actual counts from server (optional - for accuracy)
+      if (result.upvotes !== undefined && result.downvotes !== undefined) {
+        setQueue((prevQueue) =>
+          prevQueue.map((song) =>
+            song.id === id
+              ? { ...song, upvotes: result.upvotes, downvotes: result.downvotes }
+              : song
+          )
+        );
+      }
+
       console.log("✅ Vote successful!");
-      refreshStream(); // Refresh after voting
+      // No need to refresh entire queue anymore!
     } catch (error) {
       console.error("❌ Error submitting vote:", error);
+      // Revert optimistic update on error
+      setUserVotes((prevVotes) => ({ ...prevVotes, [id]: previousVote }));
+      setQueue((prevQueue) =>
+        prevQueue.map((song) => {
+          if (song.id !== id) return song;
+          
+          let revertUpvotes = song.upvotes;
+          let revertDownvotes = song.downvotes;
+          
+          // Revert the vote
+          if (type === "up") revertUpvotes--;
+          if (type === "down") revertDownvotes--;
+          
+          // Restore previous vote if it existed
+          if (previousVote === "up") revertUpvotes++;
+          if (previousVote === "down") revertDownvotes++;
+          
+          return {
+            ...song,
+            upvotes: Math.max(0, revertUpvotes),
+            downvotes: Math.max(0, revertDownvotes),
+          };
+        })
+      );
     }
   };
 

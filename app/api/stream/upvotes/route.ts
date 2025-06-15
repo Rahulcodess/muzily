@@ -14,64 +14,55 @@ export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user?.email) {
+    if (!session?.user?.id) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get the user from the database
-    const user = await prismaclient.user.findFirst({
-      where: { email: session.user.email },
-    });
-
-    if (!user) {
-      return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
 
     // Validate request body
     const data = upvoteSchema.parse(await req.json());
 
-    // Check if user has already voted
-    const existingVote = await prismaclient.upvotes.findFirst({
+    // Use upsert for better performance - single database operation
+    await prismaclient.upvotes.upsert({
       where: {
-        userId: user.id,
+        userId_streamId: {
+          userId: session.user.id,
+          streamId: data.streamId,
+        },
+      },
+      update: {
+        haveUpvoted: data.type === "up",
+      },
+      create: {
+        userId: session.user.id,
         streamId: data.streamId,
+        haveUpvoted: data.type === "up",
       },
     });
 
-    if (existingVote) {
-      // If vote type is the same, return an error
-      if ((existingVote.haveUpvoted && data.type === "up") || 
-          (!existingVote.haveUpvoted && data.type === "down")) {
-        return NextResponse.json({ message: "You have already voted" }, { status: 400 });
-      }
+    // Get updated counts in a single query
+    const [upvoteCount, downvoteCount] = await Promise.all([
+      prismaclient.upvotes.count({
+        where: { streamId: data.streamId, haveUpvoted: true },
+      }),
+      prismaclient.upvotes.count({
+        where: { streamId: data.streamId, haveUpvoted: false },
+      }),
+    ]);
 
-      // If vote type is different, update the vote
-      await prismaclient.upvotes.update({
-        where: { id: existingVote.id },
-        data: { haveUpvoted: data.type === "up" },
-      });
-    } else {
-      // Create a new upvote entry
-      await prismaclient.upvotes.create({
-        data: {
-          userId: user.id,
-          streamId: data.streamId,
-          haveUpvoted: data.type === "up",
-        },
-      });
-    }
-
-    
-    const upvoteCount = await prismaclient.upvotes.count({
-      where: { streamId: data.streamId, haveUpvoted: true },
-    });
-
+    // Update stream with new counts
     await prismaclient.stream.update({
       where: { id: data.streamId },
-      data: { upvotes: upvoteCount }, 
+      data: { 
+        upvotes: upvoteCount,
+        downvotes: downvoteCount,
+      }, 
     });
 
-    return NextResponse.json({ message: "Vote recorded successfully" }, { status: 200 });
+    return NextResponse.json({ 
+      message: "Vote recorded successfully",
+      upvotes: upvoteCount,
+      downvotes: downvoteCount,
+    }, { status: 200 });
   } catch (error) {
     console.error("Error processing upvote:", error);
     return NextResponse.json({ message: "Invalid request" }, { status: 400 });
