@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:13
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: postgress       # Database user
+      POSTGRES_PASSWORD: randompassword  # Database password
+      POSTGRES_DB: postgres        # Database name
+    ports:
+      - "5432:5432"  # Expose the port to the host machine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data  # Persist data in Docker volume
+
+  web:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL="postgresql://postgress:randompassword@localhost:5432/postgres"  # Corrected to use `db` as hostname
+    depends_on:
+      - db  # Ensures the DB starts before the web service
+
+volumes:
+  postgres_data:  # Volume to persist PostgreSQL data
