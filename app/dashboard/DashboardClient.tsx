@@ -90,7 +90,25 @@ export default function Dashboard({ creatorId }: DashboardProps) {
   };
 
   const handleAddToQueue = async () => {
-    if (!youtubeLink.trim()||!creatorId) return;
+    if (!youtubeLink.trim()) {
+      setNotify("Please enter a YouTube URL!");
+      setTimeout(() => setNotify(null), 2500);
+      return;
+    }
+    
+    if (!creatorId) {
+      setNotify("User not authenticated!");
+      setTimeout(() => setNotify(null), 2500);
+      return;
+    }
+
+    // Basic YouTube URL validation before API call
+    const youtubeRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+    if (!youtubeRegex.test(youtubeLink)) {
+      setNotify("Please enter a valid YouTube URL!");
+      setTimeout(() => setNotify(null), 2500);
+      return;
+    }
 
     try {
       console.log("🟡 Adding song:", youtubeLink);
@@ -98,13 +116,35 @@ export default function Dashboard({ creatorId }: DashboardProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          url: youtubeLink,
+          url: youtubeLink.trim(),
           creatorId: creatorId
         }),
       });
       console.log("Used creatorId:", creatorId);
 
-      if (!res.ok) throw new Error(`Add song failed: ${await res.text()}`);
+      if (!res.ok) {
+        const errorText = await res.text();
+        let errorMessage = "Failed to add song.";
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          if (errorData.message) {
+            if (errorData.message.includes("Invalid YouTube URL")) {
+              errorMessage = "Invalid YouTube URL format!";
+            } else if (errorData.message.includes("Failed to fetch video details")) {
+              errorMessage = "Video not found or private!";
+            } else if (errorData.message.includes("YouTube API")) {
+              errorMessage = "YouTube service temporarily unavailable!";
+            } else {
+              errorMessage = errorData.message;
+            }
+          }
+        } catch (e) {
+          console.error("Error parsing API response:", e);
+        }
+        
+        throw new Error(errorMessage);
+      }
 
       setYoutubeLink("");
       setNotify("Song added to queue!");
@@ -117,8 +157,9 @@ export default function Dashboard({ creatorId }: DashboardProps) {
         }
       }, 600);
     } catch (error) {
-      setNotify("Failed to add song.");
-      setTimeout(() => setNotify(null), 2500);
+      const errorMessage = error instanceof Error ? error.message : "Failed to add song.";
+      setNotify(errorMessage);
+      setTimeout(() => setNotify(null), 3500); // Longer timeout for error messages
       console.error("❌ Error adding song:", error);
     }
   };
