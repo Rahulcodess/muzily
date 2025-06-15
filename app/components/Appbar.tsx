@@ -4,7 +4,7 @@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input";
 import { Headphones, Music, ThumbsUp, ThumbsDown, Play, SkipForward, Volume2, Users, ChevronRight } from "lucide-react"
-import { cn } from "@/app/lib/utils";
+import { cn } from "@/lib/utils";
 
  export function Appbar() {
   const SessionProvider = useSession();
