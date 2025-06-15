@@ -136,7 +136,7 @@ export default function LandingPage() {
                 <ul className="space-y-2">
                   <li className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium">Puspha pushpha</p>
+                      <p className="font-medium">Puspha pushpa</p>
                       <p className="text-sm text-gray-400">Devi shri prasad</p>
                     </div>
                     <span className="text-purple-400 font-semibold">980 votes</span>
