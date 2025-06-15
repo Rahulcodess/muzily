@@ -36,15 +36,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "Failed to fetch video details from YouTube API" }, { status: 500 });
     }
 
-    if (!res || !res.title || !res.thumbnail || !res.thumbnail.thumbnails) {
+    if (!res || !res.title) {
       return NextResponse.json({ message: "Failed to fetch video details" }, { status: 500 });
     }
 
-    const thumbnails = res.thumbnail.thumbnails;
-    thumbnails.sort((a: { width: number }, b: { width: number }) => b.width - a.width);
-
-    const smallThumbnail = thumbnails.length > 1 ? thumbnails[thumbnails.length - 2]?.url : thumbnails[0]?.url;
-    const bigThumbnail = thumbnails[thumbnails.length - 1]?.url;
+    // Handle thumbnails safely
+    let smallThumbnail = "https://img.youtube.com/vi/" + extractedId + "/default.jpg";
+    let bigThumbnail = "https://img.youtube.com/vi/" + extractedId + "/maxresdefault.jpg";
+    
+    if (res.thumbnail && res.thumbnail.thumbnails && Array.isArray(res.thumbnail.thumbnails)) {
+      const thumbnails = res.thumbnail.thumbnails;
+      thumbnails.sort((a: { width: number }, b: { width: number }) => b.width - a.width);
+      smallThumbnail = thumbnails.length > 1 ? thumbnails[thumbnails.length - 2]?.url : thumbnails[0]?.url;
+      bigThumbnail = thumbnails[thumbnails.length - 1]?.url;
+    }
 
     const stream = await prismaclient.stream.create({
       data: {
@@ -53,8 +58,8 @@ export async function POST(req: NextRequest) {
         extractedId,
         type: "youtube",
         title: res.title ?? "Unknown Title",
-        smallimg: smallThumbnail ?? "https://example.com/default-small.jpg",
-        bigimg: bigThumbnail ?? "https://example.com/default-big.jpg",
+        smallimg: smallThumbnail || "https://img.youtube.com/vi/" + extractedId + "/default.jpg",
+        bigimg: bigThumbnail || "https://img.youtube.com/vi/" + extractedId + "/maxresdefault.jpg",
       },
     });
 
